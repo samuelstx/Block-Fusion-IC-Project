@@ -13,6 +13,6 @@ This game consists of a matrix in which values ​​that are powers of two are 
 
 ![imagen](https://user-images.githubusercontent.com/101350872/232573659-27073d77-1e90-4179-bf2a-4c6f252f3aa9.png)
 
-Guia como sobre realizar el proyecto y profesor que lanzo el enunciado para su realizacion: https://www.youtube.com/@codigoBinario01
+Guide how to carry out the project and teacher who launched the statement for its realization:
 
 By Samuel Soto Paredes. 2023
