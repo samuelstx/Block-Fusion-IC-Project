@@ -114,6 +114,7 @@ code segment
     push ax
     push cx
     push dx
+    push bx
     
     mov fil, 0
     mov col, 0
@@ -123,8 +124,8 @@ code segment
     lea dx, PantallaInicio
     call ImprimirCadena 
     
-    mov fil, 20
-    mov col, 5
+    mov fil, FILMSJMODO
+    mov col, COLMSJMODO
     
     call ColocarCursor 
     lea dx, msjModo 
@@ -148,24 +149,74 @@ code segment
         
     respuetaSiPreguntarDebug:
         
+        mov bx, 1
+        
+        jmp finPreguntarDebug
+    
+    respuetaNoPreguntarDebug:
+        
+        mov bx, 0
+
+    
+    finPreguntarDebug:
+        
+        mov fil, FILMSJPOT
+        mov col, COLMSJPOT
+        
+        call ColocarCursor 
+        lea dx, msjIntPot 
+        
+        call ImprimirCadena
+        
+    
+    preguntarTope:
+        
+        mov cadTope[0], 5
+        
+        lea dx, cadTope
+        call LeerCadena
+
+        lea dx, cadTope[2]
+        call CadenaANumero 
+                    
+        mov cx, ax
+        
+        dec ax
+        
+        test cx,ax
+        jne preguntarTope
+        cmp cx, 16
+        jl preguntarTope
+        cmp cx, 4096
+        jnl preguntarTope
+        mov tope, cx
+        
+        cmp bx, 0
+        je generarMatrizNo  
+        
+    
+    generarMatrizSi:
+        
         lea si, tableroJuegoDebug
         lea di, tableroJuego
         mov cx, TOTALCELDAS
         
         call CopiarVector
         
-        jmp finPreguntarDebug
+        jmp finInicioEntornoBloques
     
-    respuetaNoPreguntarDebug:
+    generarMatrizNo:
         
         lea si, tableroJuego
         add si, TOTALCELDAS*2-COLSJUEGO*2
         mov cx, COLSJUEGO
         call GenerarVectorAleatorios
-
-    
-    finPreguntarDebug:
+         
+    finInicioEntornoBloques:
+        
         call BorrarPantalla
+    
+    pop bx
     pop ax
     pop cx
     pop dx
@@ -279,6 +330,7 @@ code segment
         comandoN:
         mov ah, 1
         call BorrarPantalla
+        lea di, TableroJuego
         mov cx, TOTALCELDAS
         call BorrarVector
         jmp finComando
@@ -369,9 +421,24 @@ code segment
     push cx ;loop
     push dx
     push si
+    push ax
+    
+    mov bx, 0 
+    mov ax, tope
+    
+    obtenerPotencia:
+        
+            shr ax, 1
+            
+            inc bl
+            
+            cmp ax, 0
+            jne obtenerPotencia
+            
+            sub bl, 2
     
     potencia:
-      mov bl, 4
+       
       call NumAleatorio
       mov dx, 2
       push cx
@@ -381,7 +448,8 @@ code segment
 	  mov [si], dx; no es suficiente mov [di],0 , que solo pone la parte baja a 0
 	  add si,2
     loop potencia
-
+    
+    pop ax
     pop si 
     pop dx
     pop cx 
@@ -408,6 +476,7 @@ code segment
     add si, TOTALCELDAS*2-COLSJUEGO*2
     
     mov cx, COLSJUEGO
+    
     call GenerarVectorAleatorios
              
     pop di
@@ -504,9 +573,7 @@ code segment
 ;************************ PROGRAMA PRINCIPAL ***************
 principal:
     mov ax, data
-    mov ds, ax
-    
-    mov tope, 32         
+    mov ds, ax      
 
     menuInicial: 
     
