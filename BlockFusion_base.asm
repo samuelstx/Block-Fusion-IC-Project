@@ -380,26 +380,26 @@ code segment
                 
             comandoW:
                 inc bl
-                cmp bl, 53
+                cmp bl, '5'
                 jnl finComando
                 jmp continuaComando
                    
             comandoD:
                 inc cl
-                cmp cl, 71
+                cmp cl, 'G'
                 jnl finComando
                 jmp continuaComando
                 
                 
             comandoA:
                 dec cl
-                cmp cl, 65
+                cmp cl, 'A'
                 jl finComando
                 jmp continuaComando
             
             comandoS:
                 dec bl
-                cmp bl, 49
+                cmp bl, '1'
                 jl finComando
                 jmp continuaComando
                     
@@ -564,6 +564,22 @@ code segment
   comprobarFinJuegoFila endp
   
   
+  CombinarBloques proc
+    push bx
+    push cx
+    
+    call MatrizAVector
+    
+    ; TODO
+    
+    call VectorAMatriz
+    
+    pop cx
+    pop bx
+    ret  
+  CombinarBloques endp
+  
+  
   
 ;*************************************************************************************                                                                                                                        
 ;**********************    procedimientos de funcionlidad    *************************
@@ -601,7 +617,11 @@ principal:
         cmp ah, 2
         je finJuego
         cmp ah, 3
-        je comprobarFinJuegoTope
+        je realizarDesplazamiento
+        
+    realizarDesplazamiento:
+        call CombinarBloques
+        jmp comprobarJuegoPorTope
         
     ; Comprobar final de juego por valor tope
     comprobarJuegoLimite:       
