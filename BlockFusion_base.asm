@@ -376,7 +376,7 @@ code segment
             cmp comando[bp], 'S'
             je comandoS
             cmp comando[bp], 13
-            jne finComandoMovimiento
+            je finComandoMovimiento
                
             continuaComando:
                 
@@ -388,25 +388,23 @@ code segment
                 call MatrizAVector
                 
                 push dx
-                push ax
                 
-                mov ax, 2
+                mov dx, posMatriz
+                add posMatriz, dx
                 
-                mul posMatriz
                 
-                add si, ax
+                add si, posMatriz
                 
-                pop ax
                 pop dx
                 
                 inc bp
                 
                 cmp [si], 0
+                jne recorrerCombinacion
                 
-                jne finComandoMovimiento
-                
-                jmp recorrerCombinacion
-                
+                jmp finComandoMovimiento
+            
+                    
             comandoW:
                 dec cl
                 cmp cl, FILSJUEGO
@@ -441,6 +439,17 @@ code segment
                 jmp continuaComando
                 
              finComandoMovimiento:
+                
+                push ax
+                
+                mov ax, posMatriz
+                sub ax, dx
+                cmp dx, ax
+                
+                pop ax
+                
+                je finComando
+                
                 lea di, TableroJuego
                 
                 push ax
@@ -457,6 +466,8 @@ code segment
                 
                 mov dx, [di]
                 
+                cmp comando[bp], 13
+                jne recorrerCombinacion
                 cmp [si], dx
                 jne recorrerCombinacion
                 shl dx, 1
@@ -465,6 +476,8 @@ code segment
                 call CaerBloque
                 call PintarTableroJuego
                 mov ah, 3
+                jmp finComando
+                
                     
     
     finComando:
@@ -584,6 +597,7 @@ code segment
     push si
     push cx
     
+    lea si, TableroJuego
     mov cx, TOTALCELDAS
     comprobarFinJuego:
         mov ax, [si]
@@ -689,21 +703,21 @@ principal:
         je finJuego
         cmp ah, 3
         je comprobarJuegoPorTope
-        
-    ; Comprobar final de juego por valor tope
+    
+    ; Comprobar final de juego por tablero lleno     
     comprobarJuegoLimite:       
         
-        call comprobarFinJuegoTope
+        call comprobarFinJuegoFila
         cmp dx, 0
         je solicitarComando
         jmp finJuego
         
         ;-------------------------------------------
     
-    ; Comprobar final de juego por tablero lleno    
+    ; Comprobar final de juego por valor tope   
     comprobarJuegoPorTope:    
          
-        call comprobarFinJuegoFila
+        call comprobarFinJuegoTope
         cmp dx, 0
         je solicitarComando
         
