@@ -300,6 +300,7 @@ code segment
     push si
     push bx
     push cx
+    push bp
     
     mov fil, FILCOMANDO
     mov col, COLCOMANDO
@@ -338,80 +339,166 @@ code segment
         comandoE:
         mov ah, 2
         jmp finComando
-         
+                                             
     
     formatoB:
-        cmp comando[2], 65
+        cmp comando[2], 'A'
         jl finComando
-        cmp comando[2], 71
+        cmp comando[2], 'H'
         jnl finComando
-        cmp comando[3], 49
+        cmp comando[3], '1'
         jl finComando
-        cmp comando[3], 53
+        cmp comando[3], '6'
         jnl finComando
         
         ;La entrada es valida, se almacena el comando
-        mov ch, 0
-        mov cl, comando[2] ; Columna 
-        mov bh, 0
-        mov bl, comando[3] ; Fila
-        
-        mov si, 5
+        mov cl, comando[2] ; FILA
+        sub cl, 'A'
+        mov bl, comando[3] ; COLUMNA
+        sub bl, '1'
+        mov filMatriz, cl
+        mov colMatriz, bl
+        call MatrizAVector
+        mov dx, posMatriz
+        lea di, TableroJuego
+        add posMatriz, dx
+        add di, posMatriz
+        mov bp, 5
         
         recorrerCombinacion:
             
-            cmp comando[si], 'W'
+            cmp comando[bp], 'W'
             je comandoW
-            cmp comando[si], 'D'
+            cmp comando[bp], 'D'
             je comandoD
-            cmp comando[si], 'A'
+            cmp comando[bp], 'A'
             je comandoA
-            cmp comando[si], 'S'
+            cmp comando[bp], 'S'
             je comandoS
-            cmp comando[si], 13
-            jne finComando
+            cmp comando[bp], 13
+            jne finComandoMovimiento
                
             continuaComando:
-                inc si
-                cmp si, 9
-                jne recorrerCombinacion
-                mov ah, 3
-                jmp finComando
+                
+                lea si, TableroJuego
+                
+                mov filMatriz, cl
+                mov colMatriz, bl
+                
+                call MatrizAVector
+                
+                push dx
+                push ax
+                
+                mov ax, 2
+                
+                mul posMatriz
+                
+                add si, ax
+                
+                pop ax
+                pop dx
+                
+                inc bp
+                
+                cmp [si], 0
+                
+                jne finComandoMovimiento
+                
+                jmp recorrerCombinacion
                 
             comandoW:
-                inc bl
-                cmp bl, '5'
+                dec cl
+                cmp cl, FILSJUEGO
                 jnl finComando
+                cmp cl, 0
+                jl finComando
                 jmp continuaComando
                    
             comandoD:
-                inc cl
-                cmp cl, 'G'
+                inc bl
+                cmp bl, COLSJUEGO
                 jnl finComando
+                cmp bl, 0
+                jl finComando
                 jmp continuaComando
                 
                 
             comandoA:
-                dec cl
-                cmp cl, 'A'
+                dec bl
+                cmp bl, 0
                 jl finComando
+                cmp bl, COLSJUEGO
+                jnl finComando
                 jmp continuaComando
             
             comandoS:
-                dec bl
-                cmp bl, '1'
+                inc cl
+                cmp cl, 0
                 jl finComando
+                cmp cl, FILSJUEGO
+                jnl finComando
                 jmp continuaComando
+                
+             finComandoMovimiento:
+                lea di, TableroJuego
+                
+                push ax
+                
+                mov ax, 2
+                
+                mul dx
+                
+                mov dx, ax
+                
+                pop ax
+                
+                add di, dx
+                
+                mov dx, [di]
+                
+                cmp [si], dx
+                jne recorrerCombinacion
+                shl dx, 1
+                mov [si], dx
+                mov [di], 0
+                call CaerBloque
+                call PintarTableroJuego
+                mov ah, 3
                     
     
     finComando:
     
+    pop bp
     pop cx
     pop bx    
     pop si
     pop dx
     ret
   ComandoEntrada endp
+  
+  CaerBloque proc
+    push di
+    push dx
+    
+    desplazarBloquePorCaida:
+        
+        sub di, COLSJUEGO*2
+        cmp [di], 0
+        je finDesplazarBloque
+        mov dx, [di]
+        add di, COLSJUEGO*2
+        mov [di], dx
+        sub di, COLSJUEGO*2
+        mov [di], 0 
+        jmp desplazarBloquePorCaida
+        
+    finDesplazarBloque:    
+    
+    pop dx
+    pop di
+    ret
+  CaerBloque endp
   
   ;F: Genera un vector de CX valores aleatorios potencia de 2 entre 2^1 y 2^4  
   ;E: CX, dirección del vector donde almacenar cada dato
@@ -564,22 +651,6 @@ code segment
   comprobarFinJuegoFila endp
   
   
-  CombinarBloques proc
-    push bx
-    push cx
-    
-    call MatrizAVector
-    
-    ; TODO
-    
-    call VectorAMatriz
-    
-    pop cx
-    pop bx
-    ret  
-  CombinarBloques endp
-  
-  
   
 ;*************************************************************************************                                                                                                                        
 ;**********************    procedimientos de funcionlidad    *************************
@@ -617,11 +688,7 @@ principal:
         cmp ah, 2
         je finJuego
         cmp ah, 3
-        je realizarDesplazamiento
-        
-    realizarDesplazamiento:
-        call CombinarBloques
-        jmp comprobarJuegoPorTope
+        je comprobarJuegoPorTope
         
     ; Comprobar final de juego por valor tope
     comprobarJuegoLimite:       
