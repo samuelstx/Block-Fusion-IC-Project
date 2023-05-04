@@ -400,9 +400,9 @@ code segment
                 inc bp
                 
                 cmp [si], 0
-                jne recorrerCombinacion
+                jne finComandoMovimiento
                 
-                jmp finComandoMovimiento
+                jmp recorrerCombinacion
             
                     
             comandoW:
@@ -469,7 +469,7 @@ code segment
                 cmp comando[bp], 13
                 jne recorrerCombinacion
                 cmp [si], dx
-                jne recorrerCombinacion
+                jne finComando
                 shl dx, 1
                 mov [si], dx
                 mov [di], 0
@@ -481,6 +481,12 @@ code segment
                     
     
     finComando:
+    
+    mov fil, FILCOMANDO
+    mov col, COLCOMANDO
+    call ColocarCursor
+    lea dx, msgBlancoLargo
+    call ImprimirCadena
     
     pop bp
     pop cx
