@@ -31,7 +31,7 @@ data segment
    
    ;La estructura que almacena el tablero de juego 
    TableroJuego      dw TOTALCELDAS dup(?) ;contiene los datos del tablero en el momento actual
-   TableroJuegoDebug dw 0,0,0,0,0,0,4,2,8,2,0,8,4,2,2,0,2,2,2,2,0,8,2,8,8,0,2,2,8,2,0,8,4,2,16  ;matriz con datos precargados
+   TableroJuegoDebug dw 0,0,0,0,0,0,4,2,8,2,0,8,4,2,2,0,2,2,2,2,0,8,2,8,8,0,512,512,128,128,0,4,4,2,16  ;matriz con datos precargados
    
    fil       db ? ; para ColocarCursor
    col       db ? 
@@ -121,6 +121,13 @@ code segment
     
     call ColocarCursor
     
+    call BorrarPantalla
+    
+    mov fil, 0
+    mov col, 0
+    
+    call ColocarCursor
+    
     lea dx, PantallaInicio
     call ImprimirCadena 
     
@@ -197,7 +204,7 @@ code segment
     
     generarMatrizSi:
         
-        lea si, tableroJuegoDebug
+        lea si, TableroJuegoDebug
         lea di, tableroJuego
         mov cx, TOTALCELDAS
         
@@ -296,20 +303,18 @@ code segment
   ;    'W' desplazar arriba                                
   ;    la salida del formato B es                         ; S: AH=3
   ComandoEntrada proc  
-    push dx
-    push si
-    push bx
-    push cx
-    push bp
-    
+        
     mov fil, FILCOMANDO
     mov col, COLCOMANDO
     call ColocarCursor
     
-    lea dx, comando
-    mov comando[0], 19
-    call LeerCadena  
-    cmp comando[3], 13
+    push dx
+        lea dx, comando
+        mov comando[0], 19
+        call LeerCadena  
+        cmp comando[3], 13
+    pop dx
+    
     jne formatoB
     
     formatoA:
@@ -323,17 +328,11 @@ code segment
         jmp finComando
         
         comandoP:
-        call SubirElementosFila
-        call PintarTableroJuego
         mov ah, 0
         jmp finComando
         
         comandoN:
         mov ah, 1
-        call BorrarPantalla
-        lea di, TableroJuego
-        mov cx, TOTALCELDAS
-        call BorrarVector
         jmp finComando
         
         comandoE:
@@ -360,7 +359,7 @@ code segment
         mov colMatriz, bl
         call MatrizAVector
         mov dx, posMatriz
-        lea di, TableroJuego
+        mov di, 0
         add posMatriz, dx
         add di, posMatriz
         mov bp, 5
@@ -377,10 +376,12 @@ code segment
             je comandoS
             cmp comando[bp], 13
             je finComandoMovimiento
+            
+            jmp finComando
                
             continuaComando:
                 
-                lea si, TableroJuego
+                mov si, 0
                 
                 mov filMatriz, cl
                 mov colMatriz, bl
@@ -399,7 +400,7 @@ code segment
                 
                 inc bp
                 
-                cmp [si], 0
+                cmp TableroJuego[si], 0
                 jne finComandoMovimiento
                 
                 jmp recorrerCombinacion
@@ -440,89 +441,121 @@ code segment
                 
              finComandoMovimiento:
                 
-                push ax
-                
-                mov ax, posMatriz
-                sub ax, dx
-                cmp dx, ax
-                
-                pop ax
-                
-                je finComando
-                
-                lea di, TableroJuego
-                
-                push ax
-                
-                mov ax, 2
-                
-                mul dx
-                
-                mov dx, ax
-                
-                pop ax
-                
-                add di, dx
-                
-                mov dx, [di]
-                
                 cmp comando[bp], 13
-                jne recorrerCombinacion
-                cmp [si], dx
                 jne finComando
-                shl dx, 1
-                mov [si], dx
-                mov [di], 0
-                call CaerBloque
-                call PintarTableroJuego
+                
+                push dx
+                    mov dx, TableroJuego[di]
+                    cmp TableroJuego[si], dx
+                pop dx
+               
+                jne finComando
                 mov ah, 3
-                jmp finComando
                 
                     
     
     finComando:
     
-    mov fil, FILCOMANDO
-    mov col, COLCOMANDO
-    call ColocarCursor
-    lea dx, msgBlancoLargo
-    call ImprimirCadena
-    
-    pop bp
-    pop cx
-    pop bx    
-    pop si
+    push dx
+        mov fil, FILCOMANDO
+        mov col, COLCOMANDO
+        call ColocarCursor
+        lea dx, msgBlancoLargo
+        call ImprimirCadena
     pop dx
+    
     ret
   ComandoEntrada endp
-  
+   
+  ;F:
+  ;E:
+  ;S:
   CaerBloque proc
     push di
     push dx
+    push si
+    push ax
+    
+    mov si, 0
     
     desplazarBloquePorCaida:
         
         sub di, COLSJUEGO*2
-        cmp [di], 0
-        je finDesplazarBloque
-        mov dx, [di]
+        cmp di, si
+        jnl noSobrePasaLaMatriz
         add di, COLSJUEGO*2
-        mov [di], dx
+        mov TableroJuego[di], word ptr 0
+        jmp finDesplazarBloque
+        
+    noSobrePasaLaMatriz:
+    
+        cmp TableroJuego[di], 0
+        je finDesplazarBloque
+        mov dx, TableroJuego[di]
+        add di, COLSJUEGO*2
+        mov TableroJuego[di], dx
         sub di, COLSJUEGO*2
-        mov [di], 0 
+        mov TableroJuego[di], word ptr 0 
         jmp desplazarBloquePorCaida
         
     finDesplazarBloque:    
     
+    pop ax
+    pop si
     pop dx
     pop di
+    
     ret
   CaerBloque endp
+  
+  ;F:
+  ;E:
+  ;S:
+  RealizarRecorrido proc
+    push ax            
+        mov ax, posMatriz
+        sub ax, dx
+        cmp dx, ax
+                    
+    pop ax
+                    
+        je finComando
+                   
+        mov di, 0
+                   
+    push ax
+                    
+        mov ax, 2
+                    
+        mul dx
+                    
+        mov dx, ax
+                    
+    pop ax
+                    
+        add di, dx
+                    
+        mov dx, TableroJuego[di]
+                    
+        cmp TableroJuego[si], dx
+        jne finRecorrido
+        shl TableroJuego[di], 1
+        mov dx, TableroJuego[di]
+        mov TableroJuego[si], dx
+        mov TableroJuego[di], word ptr 0
+        call CaerBloque
+        call PintarTableroJuego
+        
+        finRecorrido:
+        
+    ret
+  RealizarRecorrido endp
   
   ;F: Genera un vector de CX valores aleatorios potencia de 2 entre 2^1 y 2^4  
   ;E: CX, dirección del vector donde almacenar cada dato
   ;    SI, número de valores aleatorios a generar y almacenar
   ;S: El vector contiene los valores aleatorios
+  
   GenerarVectorAleatorios proc
     push cx ;loop
     push dx
@@ -530,18 +563,8 @@ code segment
     push ax
     
     mov bx, 0 
-    mov ax, tope
+    mov bl, 4
     
-    obtenerPotencia:
-        
-            shr ax, 1
-            
-            inc bl
-            
-            cmp ax, 0
-            jne obtenerPotencia
-            
-            sub bl, 2
     
     potencia:
        
@@ -551,7 +574,7 @@ code segment
       mov cl, ah
       shl dx, cl
       pop cx
-	  mov [si], dx; no es suficiente mov [di],0 , que solo pone la parte baja a 0
+	  mov TableroJuego[si], dx ; no es suficiente mov [di],0 , que solo pone la parte baja a 0
 	  add si,2
     loop potencia
     
@@ -603,10 +626,10 @@ code segment
     push si
     push cx
     
-    lea si, TableroJuego
+    mov si, 0
     mov cx, TOTALCELDAS
     comprobarFinJuego:
-        mov ax, [si]
+        mov ax, TableroJuego[si]
         cmp ax, tope
         je finJuegoTope
         add si, 2
@@ -616,12 +639,7 @@ code segment
     jmp continuarJuegoTope
     
     finJuegoTope:
-        mov dx, 1
-        mov fil, FILMSJGNRAL
-        mov col, COLMSJGNRAL   
-        call ColocarCursor
-        lea dx, msjPartidaGanada
-        call ImprimirCadena 
+        mov dx, 1 
         
     continuarJuegoTope:
     
@@ -642,11 +660,11 @@ code segment
     push ax
     push si
     
-    lea si, TableroJuego
+    mov si, 0
     
     mov cx, COLSJUEGO
     comprobarFinJuegoPerdido:
-        mov ax, [si]
+        mov ax, TableroJuego[si]
         cmp ax, 0
         jne finJuegoTopePerdido
         add si, 2
@@ -656,12 +674,7 @@ code segment
     jmp continuarJuegoTopePerdido
     
     finJuegoTopePerdido:
-        mov dx, 1
-        mov fil, FILMSJGNRAL
-        mov col, COLMSJGNRAL   
-        call ColocarCursor
-        lea dx, msjPartidaPerdida
-        call ImprimirCadena 
+        mov dx, 1 
         
     continuarJuegoTopePerdido:
     
@@ -681,7 +694,7 @@ code segment
 principal:
     mov ax, data
     mov ds, ax      
-
+    
     menuInicial: 
     
         call InicioEntornoBloques
@@ -697,38 +710,64 @@ principal:
     rellenarTableroPantalla:
         
         call PintarTableroJuego
-     
+        
     solicitarComando:
         
         call ComandoEntrada
         cmp ah, 0
-        je comprobarJuegoLimite
+        je subirFilaBloques
         cmp ah, 1
-        je menuInicial
+        je nuevoJuego
         cmp ah, 2
         je finJuego
         cmp ah, 3
-        je comprobarJuegoPorTope
+        je comprobarJuegoPorTope 
     
-    ; Comprobar final de juego por tablero lleno     
-    comprobarJuegoLimite:       
+    nuevoJuego:
+    
+        call BorrarPantalla
+        lea di, TableroJuego
+        mov cx, TOTALCELDAS
+        call BorrarVector
+        jmp menuInicial    
+        
+    subirFilaBloques:       
         
         call comprobarFinJuegoFila
         cmp dx, 0
-        je solicitarComando
-        jmp finJuego
+        jne finJuegoPerdido
+        call SubirElementosFila
+        call PintarTableroJuego
+        jmp solicitarComando
         
         ;-------------------------------------------
     
-    ; Comprobar final de juego por valor tope   
+    ; Realiza el camino si es correcto y comprueva final de juego por valor tope   
     comprobarJuegoPorTope:    
-         
+        
+        call RealizarRecorrido 
         call comprobarFinJuegoTope
         cmp dx, 0
         je solicitarComando
+        jmp finJuegoGanado
         
         ;------------------------------------------- 
     
+    finJuegoPerdido:
+        mov fil, FILMSJGNRAL
+        mov col, COLMSJGNRAL   
+        call ColocarCursor
+        lea dx, msjPartidaPerdida
+        call ImprimirCadena
+        jmp finJuego
+    
+    finJuegoGanado:
+        mov fil, FILMSJGNRAL
+        mov col, COLMSJGNRAL   
+        call ColocarCursor
+        lea dx, msjPartidaGanada
+        call ImprimirCadena
+        
     finJuego:
       
     mov ah, 4ch
