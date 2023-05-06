@@ -1,3 +1,7 @@
+ ;CODIGO FUENTE BLOCK FUSIO IC PROJECT BY SAMUEL SOTO PAREDES - 2023.
+ ; samuelsotodev@gmail.com 
+ 
+ 
  ; EQUIVALENCIAS USADAS PARA LA ESTRUCTURA DE MATRIZ
  FILSJUEGO     EQU 7
  COLSJUEGO     EQU 5
@@ -106,7 +110,7 @@ code segment
 ;*************************     procedimientos de IU    *******************************
 ;*************************************************************************************  
 
-  ;F:Dibuja la pantalla de inicio y pide Debug o Juego Normal y pide un numero tope para jugar entre 16 y 2048
+;F:Dibuja la pantalla de inicio y pide Debug o Juego Normal y pide un numero tope para jugar entre 16 y 2048
   ; Si es modo Debug utiliza un tablero con valores iniciales
   ; Si es modo juego el usuario juega partiendo de cero contablero vacio
   ;S:TableroJuego actualizado segun Modo 
@@ -229,64 +233,7 @@ code segment
     pop dx
     
     ret
-  InicioEntornoBloques ENDP
-  
-  ;F: Pinta en la pantalla TableroJuego   
-  ;E: FILINICIOTAB, COLINICIOTAB (EQU) posicíon donde imprimir el tablero  
-  ;E: tableroJuego (vector DB) y sus dimensiones como matriz FILJUEGO y COLJUEGO (EQU)
-  ;E: fil y col para usar ColocarCursor
-  ;E: cad y cadVacia (cadenas DB) para usar con ImprimirCadena
-  ;S: pantalla
-  PintarTableroJuego  PROC
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-
-    lea si, tableroJuego
-      
-    mov fil, FILINICIOTAB ;primera fila de la pantalla de juego
-    xor bx, bx  
-    mov cx, FILSJUEGO
-     
-   sigueFil:
-    push cx
-    mov col, COLINICIOTAB ; primera columna de la pantalla de juego 
-    mov cx, COLSJUEGO 
- 
-   sigueCol:
-    call ColocarCursor
-    lea dx, cadVacia
-    call ImprimirCadena
-    call ColocarCursor 
-
-    mov ax, [si+bx] 
-    cmp ax, 0
-    je siguecelda 
-       
-    lea dx, cad
-    call NumeroACadena
-    call imprimirCadena
-      
-   siguecelda:
-    add bx, 2  
-    add col, 6    ; se mueve por la misma fila
-    loop sigueCol
-
-    pop cx
-    mov col, COLINICIOTAB 
-    add fil, 3    ; cambia a la fila siguiente
-  
-    loop sigueFil
-    
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret 
-  PintarTableroJuego ENDP    
+  InicioEntornoBloques ENDP  
   
   ;F: Lee un comandos hasta que correponda con un formato de salida permitido y devuelve la acción que habrá que realizar:
   ;    formato A (cadenas que solo pueden contener un carácter):             
@@ -302,6 +249,9 @@ code segment
   ;    'S' desplazar hacia abajo
   ;    'W' desplazar arriba                                
   ;    la salida del formato B es                         ; S: AH=3
+  ;S: DI contiene la direccion de memoria de bloque origen
+  ;S: SI contiene la direccion de memoria de bloque destino
+  
   ComandoEntrada proc  
         
     mov fil, FILCOMANDO
@@ -325,7 +275,7 @@ code segment
         cmp comando[2],'E'
         je comandoE
         
-        jmp finComando
+        jmp finComandoError
         
         comandoP:
         mov ah, 0
@@ -342,13 +292,13 @@ code segment
     
     formatoB:
         cmp comando[2], 'A'
-        jl finComando
+        jl finComandoError
         cmp comando[2], 'H'
-        jnl finComando
+        jnl finComandoError
         cmp comando[3], '1'
-        jl finComando
+        jl finComandoError
         cmp comando[3], '6'
-        jnl finComando
+        jnl finComandoError
         
         ;La entrada es valida, se almacena el comando
         mov cl, comando[2] ; FILA
@@ -377,7 +327,7 @@ code segment
             cmp comando[bp], 13
             je finComandoMovimiento
             
-            jmp finComando
+            jmp finComandoError
                
             continuaComando:
                 
@@ -409,24 +359,24 @@ code segment
             comandoW:
                 dec cl
                 cmp cl, FILSJUEGO
-                jnl finComando
+                jnl finComandoError
                 cmp cl, 0
-                jl finComando
+                jl finComandoError
                 jmp continuaComando
                    
             comandoD:
                 inc bl
                 cmp bl, COLSJUEGO
-                jnl finComando
+                jnl finComandoError
                 cmp bl, 0
-                jl finComando
+                jl finComandoError
                 jmp continuaComando
                 
                 
             comandoA:
                 dec bl
                 cmp bl, 0
-                jl finComando
+                jl finComandoError
                 cmp bl, COLSJUEGO
                 jnl finComando
                 jmp continuaComando
@@ -434,25 +384,27 @@ code segment
             comandoS:
                 inc cl
                 cmp cl, 0
-                jl finComando
+                jl finComandoError
                 cmp cl, FILSJUEGO
-                jnl finComando
+                jnl finComandoError
                 jmp continuaComando
                 
              finComandoMovimiento:
                 
                 cmp comando[bp], 13
-                jne finComando
+                jne finComandoError
                 
                 push dx
                     mov dx, TableroJuego[di]
                     cmp TableroJuego[si], dx
                 pop dx
                
-                jne finComando
+                jne finComandoError
                 mov ah, 3
+                jmp finComando
                 
-                    
+    finComandoError:
+        mov ah, 20                
     
     finComando:
     
@@ -467,9 +419,11 @@ code segment
     ret
   ComandoEntrada endp
    
-  ;F:
-  ;E:
-  ;S:
+  ;F: Los bloques que estaban por encima del bloque origen (Bloque sobre el que comienza el camino) son desplazados
+  ;   hacia abajo hasta que encima de ellos se encuentre un 0 o en su defecto el bloque mas alto en el desplazamiento
+  ;   coincide con la ultima fila, escribe un 0 simulando que todo lo que esta por fuera de la matriz son 0 para no 
+  ;   caer en una condicion de bucle infinito o escriba valores de otro bloque de memoria diferente a TableroJuego
+  ;E: DI contiene la direccion de origen del dato
   CaerBloque proc
     push di
     push dx
@@ -508,22 +462,24 @@ code segment
     ret
   CaerBloque endp
   
-  ;F:
-  ;E:
-  ;S:
+  ;F: Este procedimiento realiza el recorrido si el camino introducido en forma de comando por el usuario es correcto
+  ;   Si la combinacion es correcta incrementa el valor del bloque y llama al procedimiento CaerBloque
+  ;E: SI contiene la direccion de memoria de bloque destino
+  ;E: DI contiene la direccion de memoria de bloque origen
+  ;S: DI mantiene la direccion de memoria de bloque origen
   RealizarRecorrido proc
-    push ax            
+    push ax   
         mov ax, posMatriz
         sub ax, dx
         cmp dx, ax
                     
-    pop ax
+    ;pop ax
                     
         je finComando
                    
         mov di, 0
                    
-    push ax
+    ;push ax
                     
         mov ax, 2
                     
@@ -531,7 +487,7 @@ code segment
                     
         mov dx, ax
                     
-    pop ax
+    ;pop ax
                     
         add di, dx
                     
@@ -547,7 +503,7 @@ code segment
         call PintarTableroJuego
         
         finRecorrido:
-        
+    pop ax    
     ret
   RealizarRecorrido endp
   
@@ -557,7 +513,7 @@ code segment
   ;S: El vector contiene los valores aleatorios
   
   GenerarVectorAleatorios proc
-    push cx ;loop
+    push cx 
     push dx
     push si
     push ax
@@ -570,11 +526,11 @@ code segment
        
       call NumAleatorio
       mov dx, 2
-      push cx
-      mov cl, ah
-      shl dx, cl
-      pop cx
-	  mov TableroJuego[si], dx ; no es suficiente mov [di],0 , que solo pone la parte baja a 0
+      push cx ; Almacenamos el indice del bucle
+          mov cl, ah
+          shl dx, cl
+      pop cx ; Recuperamos el indice del bucle
+	  mov [si], dx 
 	  add si,2
     loop potencia
     
@@ -585,6 +541,9 @@ code segment
     ret   
   GenerarVectorAleatorios endp
   
+  ;F: Este procedimiento sube los elementos una fila hacia arriba para generar un espacio
+  ;   en blanco justo debajo de dicha fila y llama al procedimiento generar vector aleatorio para
+  ;   rellenar dicha fila en blanco con elementos aleatorios comprendidos ente 2^1 y 2^4
   SubirElementosFila proc
     push cx 
     push di
@@ -649,7 +608,7 @@ code segment
     ret  
   comprobarFinJuegoTope endp
   
-   ;F: Comprueba si se dan las condiciones de fin de juego por haber elementos en la fila superior
+  ;F: Comprueba si se dan las condiciones de fin de juego por haber elementos en la fila superior
   ;   Si el tablero tiene algún bloque en la primera fila, se ha perdido
   ;E: TableroJuego, SI
   ;    COLSJUEGO  
@@ -695,6 +654,9 @@ principal:
     mov ax, data
     mov ds, ax      
     
+    ;------------------------------------------- 
+    ; Se ejecuta siempre al incio si el usuario intoduce
+    ; el comando 'N'
     menuInicial: 
     
         call InicioEntornoBloques
@@ -705,12 +667,20 @@ principal:
     
         lea dx, pantTablero
         call ImprimirCadena
-                 
+        
         
     rellenarTableroPantalla:
-        
+    
         call PintarTableroJuego
         
+    ;------------------------------------------- 
+    ; Llama al procedimiento que solicita al usuario
+    ; un comando que puede tener dos formatos, aqui
+    ; se controla que salida ha tenido ese procedimiento
+    ; y salta condicionalmente a la etiqueta que este
+    ; relacionada con dicha salida, si ninguna salida
+    ; corresponde con ninguna etiqueta, se vuelve a solicitar
+    ; un comando ya que se identifica como no valido
     solicitarComando:
         
         call ComandoEntrada
@@ -721,16 +691,22 @@ principal:
         cmp ah, 2
         je finJuego
         cmp ah, 3
-        je comprobarJuegoPorTope 
-    
+        je comprobarJuegoPorTope
+        
+        jmp solicitarComando 
+        
+    ;------------------------------------------- 
+    ; Si el usuario invoco el comando 'N'
     nuevoJuego:
     
         call BorrarPantalla
         lea di, TableroJuego
         mov cx, TOTALCELDAS
         call BorrarVector
-        jmp menuInicial    
+        jmp menuInicial
         
+    ;------------------------------------------- 
+    ; Si el usuario invoco el comando 'P'
     subirFilaBloques:       
         
         call comprobarFinJuegoFila
@@ -740,9 +716,10 @@ principal:
         call PintarTableroJuego
         jmp solicitarComando
         
-        ;-------------------------------------------
-    
-    ; Realiza el camino si es correcto y comprueva final de juego por valor tope   
+    ;------------------------------------------- 
+    ; Comprueba si una celda contiene el elemento tope
+    ; esto solo puede darse si el camino es correcto y
+    ; se han fusionado dos bloques
     comprobarJuegoPorTope:    
         
         call RealizarRecorrido 
@@ -751,23 +728,28 @@ principal:
         je solicitarComando
         jmp finJuegoGanado
         
-        ;------------------------------------------- 
-    
-    finJuegoPerdido:
+    ;------------------------------------------- 
+    ; Si la fila superior contenia elementos y el usuario invoco el comando 'P'
+    finJuegoPerdido:         
         mov fil, FILMSJGNRAL
         mov col, COLMSJGNRAL   
         call ColocarCursor
         lea dx, msjPartidaPerdida
         call ImprimirCadena
         jmp finJuego
-    
+        
+    ;------------------------------------------- 
+    ; Si tras comprobar alguna celda contiene el valor tope
     finJuegoGanado:
         mov fil, FILMSJGNRAL
         mov col, COLMSJGNRAL   
         call ColocarCursor
         lea dx, msjPartidaGanada
         call ImprimirCadena
-        
+    
+    ;------------------------------------------- 
+    ; Retorna el control al sistema si el juego se detuvo ya sea por perder, ganar
+    ; invocar al comando 'E'
     finJuego:
       
     mov ah, 4ch

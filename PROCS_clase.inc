@@ -83,3 +83,60 @@
     pop cx 
     ret
   BorrarVector endp
+
+  ;F: Pinta en la pantalla TableroJuego   
+  ;E: FILINICIOTAB, COLINICIOTAB (EQU) posicíon donde imprimir el contenido de la 1ra celda del tablero   
+  ;E: tableroJuego (vector DB) y sus dimensiones como matriz FILJUEGO y COLJUEGO (EQU)
+  ;E: fil y col para usar ColocarCursor
+  ;E: cad y cadVacia (cadenas DB) para usar con ImprimirCadena
+  ;S: pantalla
+  PintarTableroJuego  PROC
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+
+    lea si, tableroJuego
+      
+    mov fil, FILINICIOTAB ;primera fila de la pantalla de juego
+    xor bx, bx  
+    mov cx, FILSJUEGO
+     
+   sigueFil:
+    push cx
+    mov col, COLINICIOTAB ; primera columna de la pantalla de juego 
+    mov cx, COLSJUEGO 
+ 
+   sigueCol:
+    call ColocarCursor
+    lea dx, cadVacia
+    call ImprimirCadena
+    call ColocarCursor 
+
+    mov ax, [si+bx] 
+    cmp ax, 0
+    je siguecelda 
+       
+    lea dx, cad
+    call NumeroACadena
+    call imprimirCadena
+      
+   siguecelda:
+    add bx, 2  
+    add col, 6    ; se mueve por la misma fila
+    loop sigueCol
+
+    pop cx
+    mov col, COLINICIOTAB 
+    add fil, 3    ; cambia a la fila siguiente
+  
+    loop sigueFil
+    
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret 
+  PintarTableroJuego ENDP    
