@@ -507,6 +507,10 @@ code segment
     ret
   RealizarRecorrido endp
   
+;*************************************************************************************                                                                                                                        
+;**********************    procedimientos de funcionlidad    *************************
+;*************************************************************************************    
+  
   ;F: Genera un vector de CX valores aleatorios potencia de 2 entre 2^1 y 2^4  
   ;E: CX, dirección del vector donde almacenar cada dato
   ;    SI, número de valores aleatorios a generar y almacenar
@@ -575,39 +579,6 @@ code segment
 
   SubirElementosFila endp
   
-  ;F: Comprueba si se dan las condiciones de fin de juego. Si hay una celda con valor tope (DW) se ha ganado
-  ;E: tablero de juego numero de celdas del tablero tope, variable DW
-  ;S: DX=0 si no es fin de juego y el juego debe continuar
-  ;    DX=1 si es fin de juego y el juego debe terminar (se puede crear algún estado más si se considera oportuno)
-  ;    mensajes de partida ganada en la posición FILMSJGNRAL, COLMSJGNRAL de pantalla, si es el caso
-  comprobarFinJuegoTope proc
-    push ax
-    push si
-    push cx
-    
-    mov si, 0
-    mov cx, TOTALCELDAS
-    comprobarFinJuego:
-        mov ax, TableroJuego[si]
-        cmp ax, tope
-        je finJuegoTope
-        add si, 2
-    loop comprobarFinJuego
-                 
-    mov dx, 0
-    jmp continuarJuegoTope
-    
-    finJuegoTope:
-        mov dx, 1 
-        
-    continuarJuegoTope:
-    
-    pop cx
-    pop si
-    pop ax
-    ret  
-  comprobarFinJuegoTope endp
-  
   ;F: Comprueba si se dan las condiciones de fin de juego por haber elementos en la fila superior
   ;   Si el tablero tiene algún bloque en la primera fila, se ha perdido
   ;E: TableroJuego, SI
@@ -643,12 +614,38 @@ code segment
   comprobarFinJuegoFila endp
   
   
-  
-;*************************************************************************************                                                                                                                        
-;**********************    procedimientos de funcionlidad    *************************
-;*************************************************************************************    
-  
-
+  ;F: Comprueba si se dan las condiciones de fin de juego. Si hay una celda con valor tope (DW) se ha ganado
+  ;E: tablero de juego numero de celdas del tablero tope, variable DW
+  ;S: DX=0 si no es fin de juego y el juego debe continuar
+  ;    DX=1 si es fin de juego y el juego debe terminar (se puede crear algún estado más si se considera oportuno)
+  ;    mensajes de partida ganada en la posición FILMSJGNRAL, COLMSJGNRAL de pantalla, si es el caso
+  comprobarFinJuegoTope proc
+    push ax
+    push si
+    push cx
+    
+    mov si, 0
+    mov cx, TOTALCELDAS
+    comprobarFinJuego:
+        mov ax, TableroJuego[si]
+        cmp ax, tope
+        je finJuegoTope
+        add si, 2
+    loop comprobarFinJuego
+                 
+    mov dx, 0
+    jmp continuarJuegoTope
+    
+    finJuegoTope:
+        mov dx, 1 
+        
+    continuarJuegoTope:
+    
+    pop cx
+    pop si
+    pop ax
+    ret  
+  comprobarFinJuegoTope endp
 ;************************ PROGRAMA PRINCIPAL ***************
 principal:
     mov ax, data
