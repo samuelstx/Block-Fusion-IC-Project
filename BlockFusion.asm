@@ -13,7 +13,10 @@
 
  FILMSJPOT     EQU 22   ; posicion msj numero tope con el que jugar
  COLMSJPOT     EQU 5 
-
+ 
+ FILMSJNMOV    EQU 24   ; preguntar numero max movimientos
+ COLMSJNMOV    EQU 7
+ 
  FILENTPOT     EQU FILMSJPOT   ; posicion para pedir el numero tope con el que jugar
  COLENTPOT     EQU COLMSJPOT+60 
 
@@ -30,7 +33,11 @@
  COLCOMANDO    EQU COLMSJGNRAL+10 
   
 
-data segment        
+data segment
+   NMov dw ? ; Variable de la defensa - Numero de movimientos
+   NMovRealizados db '0$'
+   msjNMov  db "Introduce el numero maximo de movimientos(2/5): $"        
+   msjNMovRealizados db "Movimientos realizados: $"
    comando   db 22 dup ('$')  ;contendra el comando de entrada
    
    ;La estructura que almacena el tablero de juego 
@@ -214,7 +221,7 @@ code segment
         
         call CopiarVector
         
-        jmp finInicioEntornoBloques
+        jmp mostrarMensajeNumMaxMovimientos
     
     generarMatrizNo:
         
@@ -222,6 +229,27 @@ code segment
         add si, TOTALCELDAS*2-COLSJUEGO*2
         mov cx, COLSJUEGO
         call GenerarVectorAleatorios
+        
+    mostrarMensajeNumMaxMovimientos:
+        mov fil, FILMSJNMOV
+        mov col, COLMSJNMOV
+        call ColocarCursor
+        
+        lea dx, msjNMov
+        call ImprimirCadena 
+        
+    preguntarNumMaximoMovimientos:
+        
+        call LeerTeclaSinEco
+        
+        cmp al, '2'
+        jl preguntarNumMaximoMovimientos
+        cmp al, '6'
+        jnl preguntarNumMaximoMovimientos
+        
+        mov ah, 0
+        
+        mov NMov, ax
          
     finInicioEntornoBloques:
         
@@ -503,6 +531,9 @@ code segment
         call PintarTableroJuego
         
         finRecorrido:
+        dec NMov
+        INC NMovRealizados
+     
     pop ax    
     ret
   RealizarRecorrido endp
@@ -655,7 +686,9 @@ principal:
     ; Se ejecuta siempre al incio si el usuario intoduce
     ; el comando 'N'
     menuInicial: 
-    
+        
+        mov NMov, ' '
+        mov NMovRealizados, '0'
         call InicioEntornoBloques
         
         mov fil, FILPANTALLAJ
@@ -679,7 +712,13 @@ principal:
     ; corresponde con ninguna etiqueta, se vuelve a solicitar
     ; un comando ya que se identifica como no valido
     solicitarComando:
-        
+        mov fil, 0
+        mov col, 0
+        call ColocarCursor
+        lea dx, msjNMovRealizados
+        call ImprimirCadena
+        lea dx, NMovRealizados
+        call ImprimirCadena
         call ComandoEntrada
         cmp ah, 0
         je subirFilaBloques
@@ -722,9 +761,14 @@ principal:
         call RealizarRecorrido 
         call comprobarFinJuegoTope
         cmp dx, 0
-        je solicitarComando
+        je comprobarMovimientosDisponibles
         jmp finJuegoGanado
-        
+    
+    ;------------------------------------------- 
+    ; Defensa del proyecto        
+    comprobarMovimientosDisponibles:
+        cmp NMov, '0'
+        jne solicitarComando  
     ;------------------------------------------- 
     ; Si la fila superior contenia elementos y el usuario invoco el comando 'P'
     finJuegoPerdido:         
